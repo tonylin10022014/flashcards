@@ -15,8 +15,8 @@
 .flip-b {transform:rotateY(180deg)}
 canvas {touch-action:none}
 .pc {position:relative;display:inline-grid;justify-items:center;align-items:center;padding:30px 4px 30px 4px;overflow:visible!important}
-.pch {position:relative;text-align:center;padding:0 2px;overflow:visible!important}
-.pdot {position:absolute;bottom:2px;left:50%;transform:translateX(-50%) translateY(100%);width:8px;height:8px;border-radius:50%}
+.pch {position:relative;text-align:center;padding:0 2px;overflow:visible!important;display:flex;flex-direction:column;align-items:center}
+.pdot {position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);width:8px;height:8px;border-radius:50%;z-index:10}
 .parc {position:absolute;top:2px;height:22px;border-bottom:none;border-radius:50% 50% 0 0;box-sizing:border-box;pointer-events:none}
 @keyframes sb {0%{transform:scale(0) rotate(0);opacity:1}50%{transform:scale(1.5) rotate(180deg);opacity:1}100%{transform:scale(2.5) rotate(360deg) translateY(-100px);opacity:0}}
 @keyframes sx {0%,100%{transform:translateX(0)}20%{transform:translateX(-12px)}40%{transform:translateX(12px)}60%{transform:translateX(-8px)}80%{transform:translateX(8px)}}
@@ -151,29 +151,59 @@ canvas {touch-action:none}
 <canvas x-ref="dc" width="400" height="300" class="border-2 border-purple-200 rounded-lg shadow-inner bg-white touch-none" @mousedown.sd2($event)" @mousemove.drw($event)" @mouseup.ed2()" @mouseleave.ed2()" @touchstart.sd2($event)" @touchmove.drw($event)" @touchend.ed2()"></canvas>
 <div class="flex gap-2 mt-3"><button @click="showD=false" class="bg-gray-300 px-4 py-2 rounded-lg font-bold">取消</button><button @click="sc2()" class="bg-purple-600 text-white px-4 py-2 rounded-lg font-bold">💾 儲存</button></div></div></div>
 
-<!-- EDIT (stroke coloring + add/replace) -->
+<!-- EDIT MODAL (SIMPLIFIED: toggle buttons + reset + underline fix) -->
 <div x-show="showE" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" style="display:none">
 <div class="bg-white w-full max-w-3xl rounded-2xl p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
-<h3 class="text-lg font-bold text-indigo-800 mb-3">✏️ 編輯單詞與 Phonics</h3>
+<div class="flex justify-between items-center mb-3">
+<h3 class="text-lg font-bold text-indigo-800">✏️ 編輯單詞與 Phonics</h3>
+</div>
 <div class="mb-3"><label class="text-sm font-bold text-gray-600">詞彙</label><input x-model="ew" @input="sep()" class="border-2 border-indigo-200 rounded-lg p-2 w-full text-lg font-bold"></div>
-<div class="flex items-center gap-3 mb-3 bg-gray-50 p-2 rounded-lg border"><span class="text-sm font-bold text-gray-600">📋 自動填入:</span><select x-model="afm" class="border rounded p-1 text-sm font-bold bg-white"><option value="replace">🔄 取代</option><option value="add">➕ 加入</option></select><span class="text-xs text-gray-400" x-show="afm==='add'">新結果加在後面</span><span class="text-xs text-gray-400" x-show="afm==='replace'">新結果取代</span></div>
-<button @click="ata()" :disabled="it2||ise2" class="w-full mb-3 bg-gradient-to-r from-teal-500 to-amber-500 text-white px-4 py-3 rounded-lg font-bold text-sm disabled:opacity-50"><span x-show="!it2&&!ise2">🚀 一鍵自動翻譯+例句</span><span x-show="it2||ise2">⏳ 處理中...</span></button>
+
+<!-- Add/Replace + One-click + Reset -->
+<div class="flex items-center gap-2 mb-3 flex-wrap">
+<div class="flex items-center gap-2 bg-gray-50 p-2 rounded-lg border"><span class="text-xs font-bold text-gray-600">填入:</span><select x-model="afm" class="border rounded p-1 text-xs font-bold bg-white"><option value="replace">🔄取代</option><option value="add">➕加入</option></select></div>
+<button @click="ata()" :disabled="it2||ise2" class="bg-gradient-to-r from-teal-500 to-amber-500 text-white px-3 py-2 rounded-lg font-bold text-sm disabled:opacity-50">🚀一鍵翻譯+例句</button>
+<button @click="resetPhonics()" class="bg-red-100 text-red-600 px-3 py-2 rounded-lg font-bold text-sm">🔄重設Phonics</button>
+</div>
+
 <div class="mb-2"><label class="text-sm font-bold text-gray-600">翻譯</label><div class="flex gap-2"><input x-model="etr" class="border-2 border-teal-200 rounded-lg p-2 flex-1"><button @click="at()" :disabled="it2" class="bg-teal-500 text-white px-3 py-2 rounded-lg font-bold text-sm disabled:opacity-50"><span x-show="!it2">🌐</span><span x-show="it2">⏳</span></button></div></div>
-<div x-show="tr.length>0" class="mb-3 border rounded-lg p-2 bg-teal-50 max-h-32 overflow-y-auto"><div class="text-xs font-bold text-teal-700 mb-1">翻譯選項 (點擊<span x-text="afm==='add'?'加入':'取代'"></span>):</div><template x-for="(t,i) in tr" :key="'t'+i"><div @click="str(i)" class="cursor-pointer hover:bg-teal-100 p-1 rounded text-sm border-b border-teal-100" x-text="t"></div></template></div>
+<div x-show="tr.length>0" class="mb-3 border rounded-lg p-2 bg-teal-50 max-h-28 overflow-y-auto"><div class="text-xs font-bold text-teal-700 mb-1">翻譯(點擊<span x-text="afm==='add'?'加入':'取代'"></span>):</div><template x-for="(t,i) in tr" :key="'t'+i"><div @click="str(i)" class="cursor-pointer hover:bg-teal-100 p-1 rounded text-sm border-b border-teal-100" x-text="t"></div></template></div>
 <div class="mb-2"><label class="text-sm font-bold text-gray-600">例句</label><div class="flex gap-2"><input x-model="ee" class="border-2 border-amber-200 rounded-lg p-2 flex-1"><button @click="ase()" :disabled="ise2" class="bg-amber-500 text-white px-3 py-2 rounded-lg font-bold text-sm disabled:opacity-50"><span x-show="!ise2">📝</span><span x-show="ise2">⏳</span></button></div></div>
-<div x-show="er.length>0" class="mb-3 border rounded-lg p-2 bg-amber-50 max-h-32 overflow-y-auto"><div class="text-xs font-bold text-amber-700 mb-1">例句選項 (點擊<span x-text="afm==='add'?'加入':'取代'"></span>):</div><template x-for="(e,i) in er" :key="'e'+i"><div @click="ser(i)" class="cursor-pointer hover:bg-amber-100 p-1 rounded text-sm border-b border-amber-100" x-text="e"></div></template></div>
-<div class="border-2 border-purple-200 rounded-lg p-3 mb-3"><div class="text-sm font-bold text-purple-700 mb-2">🔤 Phonics</div>
-<div class="flex items-center gap-2 mb-2 bg-pink-50 p-2 rounded border border-pink-200"><span class="text-xs font-bold text-pink-700">🖌️ 筆畫著色筆:</span><input type="color" x-model="sbc" class="w-10 h-8 cursor-pointer"><span class="text-xs text-gray-400">點擊中文筆畫逐筆著色</span></div>
-<div class="flex gap-2 overflow-x-auto pb-2"><template x-for="(ch,idx) in [...ew]" :key="idx"><div class="flex flex-col items-center min-w-[110px] border rounded-lg p-2 bg-purple-50">
-<div class="mb-1 min-h-[60px] flex items-center justify-center" x-html="rcs(idx)" @click="hsc($event)"></div>
-<div class="cursor-pointer h-6 flex items-center justify-center mb-1 w-full border-t border-purple-200 pt-1" @click="ep[idx].hasDot=!ep[idx].hasDot;if(ep[idx].hasDot&&!ep[idx].dotColor)ep[idx].dotColor=ep[idx].color"><div x-show="ep[idx].hasDot" class="w-3 h-3 rounded-full" :style="'background:'+(ep[idx].dotColor||ep[idx].color)"></div><span x-show="!ep[idx].hasDot" class="text-gray-300 text-xs">加點</span></div>
-<label class="text-xs text-gray-600">字色</label><input type="color" x-model="ep[idx].color" class="w-12 h-8 mb-1 cursor-pointer" @change="ep[idx].strokeColors={}">
-<div x-show="ep[idx].hasDot"><label class="text-xs text-gray-600">點色</label><input type="color" x-model="ep[idx].dotColor" class="w-12 h-8 mb-1 cursor-pointer"></div>
-<label class="text-xs text-gray-600 mt-1">底線</label><input type="checkbox" x-model="ep[idx].hasUnderline" class="mb-1 w-4 h-4">
-<div x-show="idx<[...ew].length-1" class="mt-2 flex flex-col items-center border-t pt-2 border-purple-200 w-full"><label class="text-xs text-gray-600">連線→</label><input type="checkbox" x-model="ep[idx].connectRight" class="mb-1 w-4 h-4"><div x-show="ep[idx].connectRight"><label class="text-xs text-gray-600">線色</label><input type="color" x-model="ep[idx].lineColor" class="w-12 h-8 cursor-pointer"></div></div>
-</div></template></div>
-<div class="mt-2 p-2 bg-white rounded border border-purple-100 text-center"><div class="text-xs text-gray-400 mb-1">預覽:</div><div class="text-2xl font-bold" x-html="rp({word:ew,phonics:ep})"></div></div></div>
-<div class="flex gap-2 justify-end"><button @click="showE=false" class="bg-gray-300 px-4 py-2 rounded-lg font-bold">取消</button><button @click="se2()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold">💾 儲存</button></div></div></div>
+<div x-show="er.length>0" class="mb-3 border rounded-lg p-2 bg-amber-50 max-h-28 overflow-y-auto"><div class="text-xs font-bold text-amber-700 mb-1">例句(點擊<span x-text="afm==='add'?'加入':'取代'"></span>):</div><template x-for="(e,i) in er" :key="'e'+i"><div @click="ser(i)" class="cursor-pointer hover:bg-amber-100 p-1 rounded text-sm border-b border-amber-100" x-text="e"></div></template></div>
+
+<!-- SIMPLIFIED PHONICS EDITOR -->
+<div class="border-2 border-purple-200 rounded-lg p-3 mb-3">
+<div class="flex items-center gap-2 mb-3 bg-pink-50 p-2 rounded border border-pink-200">
+<span class="text-xs font-bold text-pink-700">🖌️ 筆畫著色筆:</span>
+<input type="color" x-model="sbc" class="w-10 h-8 cursor-pointer">
+<span class="text-xs text-gray-400">點擊中文筆畫逐筆著色</span>
+</div>
+<div class="flex gap-2 overflow-x-auto pb-2">
+<template x-for="(ch,idx) in [...ew]" :key="idx">
+<div class="flex flex-col items-center min-w-[95px] border-2 rounded-lg p-2 bg-purple-50">
+<!-- Character (clickable for stroke coloring) -->
+<div class="mb-2 min-h-[60px] flex items-center justify-center cursor-pointer" x-html="rcs(idx)" @click="hsc($event)"></div>
+<!-- Toggle buttons (big, easy to tap) -->
+<div class="flex gap-1 mb-2">
+<button @click="toggleDot(idx)" :class="ep[idx].hasDot?'bg-orange-500 text-white':'bg-gray-200 text-gray-500'" class="px-3 py-1.5 rounded-lg text-xs font-bold transition">•點</button>
+<button @click="ep[idx].hasUnderline=!ep[idx].hasUnderline" :class="ep[idx].hasUnderline?'bg-blue-500 text-white':'bg-gray-200 text-gray-500'" class="px-3 py-1.5 rounded-lg text-xs font-bold transition">U線</button>
+</div>
+<!-- Color pickers -->
+<div class="flex gap-1 justify-center">
+<div class="flex flex-col items-center"><span class="text-[10px] text-gray-500">字</span><input type="color" x-model="ep[idx].color" class="w-8 h-7 cursor-pointer" @change="ep[idx].strokeColors={}"></div>
+<div x-show="ep[idx].hasDot" class="flex flex-col items-center"><span class="text-[10px] text-gray-500">點</span><input type="color" x-model="ep[idx].dotColor" class="w-8 h-7 cursor-pointer"></div>
+</div>
+<!-- Connection (big toggle button, only non-last) -->
+<button x-show="idx<[...ew].length-1" @click="ep[idx].connectRight=!ep[idx].connectRight" :class="ep[idx].connectRight?'bg-green-500 text-white':'bg-gray-200 text-gray-500'" class="mt-2 px-3 py-1.5 rounded-lg text-xs font-bold transition w-full">→連</button>
+<div x-show="ep[idx].connectRight" class="flex flex-col items-center mt-1"><span class="text-[10px] text-gray-500">線色</span><input type="color" x-model="ep[idx].lineColor" class="w-8 h-7 cursor-pointer"></div>
+</div>
+</template>
+</div>
+<div class="mt-2 p-2 bg-white rounded border border-purple-100 text-center"><div class="text-xs text-gray-400 mb-1">預覽:</div><div class="text-2xl font-bold" x-html="rp({word:ew,phonics:ep})"></div></div>
+</div>
+
+<div class="flex gap-2 justify-end"><button @click="showE=false" class="bg-gray-300 px-4 py-2 rounded-lg font-bold">取消</button><button @click="se2()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold">💾 儲存</button></div>
+</div></div>
 </div>
 
 <script>
@@ -213,6 +243,7 @@ function fa() {
         ig() { const d=this.decks[this.cdn]||[]; const sz=Math.min(parseInt(this.gs)||9,d.length); this.gi=[...d].sort(()=>Math.random()-0.5).slice(0,sz); },
         spk(w) { if(!w)return; if('speechSynthesis'in window){ speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(w); u.lang=/[\u4e00-\u9fff]/.test(w)?'zh-TW':'en-US'; u.rate=0.8; speechSynthesis.speak(u); } },
 
+        // RENDER PHONICS (dot position fixed, underline for SVG fixed)
         rp(obj) {
             const w=(obj&&obj.word)||''; if(!obj||!obj.phonics||obj.phonics.length===0) return w;
             const cs=[...w]; const n=cs.length; if(n===0)return '';
@@ -226,123 +257,140 @@ function fa() {
                 const hu=p.hasUnderline||false; const sc=p.strokeColors||{};
                 const ic=/[\u4e00-\u9fff]/.test(ch); let ch2='';
                 if(ic&&this.sdc[ch]) {
-                    const d=this.sdc[ch];
-                    ch2='<svg viewBox="0 0 1024 1024" style="width:50px;height:50px;display:inline-block;"><g transform="matrix(1,0,0,-1,0,1024)">';
-                    d.strokes.forEach((sp,si)=>{ const s2=sc[si]||col; ch2+='<path d="'+sp+'" fill="'+s2+'"/>'; });
-                    ch2+='</g></svg>';
+                    var ulStyle = hu ? 'border-bottom:3px solid '+col+';padding-bottom:2px;' : '';
+                    ch2='<span style="display:inline-block;'+ulStyle+'"><svg viewBox="0 0 1024 1024" style="width:50px;height:50px;display:inline-block;"><g transform="matrix(1,0,0,-1,0,1024)">';
+                    d=this.sdc[ch];
+                    d.strokes.forEach(function(sp,si){ var s2=sc[si]||col; ch2+='<path d="'+sp+'" fill="'+s2+'"/>'; });
+                    ch2+='</g></svg></span>';
                 } else {
                     const pt=p.partial||'full'; const sec=p.secondaryColor||'#94a3b8';
-                    if(pt==='full'||!pt) { ch2='<span style="color:'+col+';'+(hu?'text-decoration:underline;text-decoration-color:'+col+';':'')+'">'+ch+'</span>'; }
-                    else { let g=pt==='top'?'to bottom,'+col+' 50%,'+sec+' 50%':pt==='bottom'?'to top,'+col+' 50%,'+sec+' 50%':pt==='left'?'to right,'+col+' 50%,'+sec+' 50%':'to left,'+col+' 50%,'+sec+' 50%'; ch2='<span style="background:linear-gradient('+g+');-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;'+(hu?'text-decoration:underline;':'')+'">'+ch+'</span>'; }
+                    if(pt==='full'||!pt) { ch2='<span style="color:'+col+';'+(hu?'text-decoration:underline;text-decoration-color:'+col+';text-decoration-thickness:2px;':'')+'">'+ch+'</span>'; }
+                    else { var g=pt==='top'?'to bottom,'+col+' 50%,'+sec+' 50%':pt==='bottom'?'to top,'+col+' 50%,'+sec+' 50%':pt==='left'?'to right,'+col+' 50%,'+sec+' 50%':'to left,'+col+' 50%,'+sec+' 50%'; ch2='<span style="background:linear-gradient('+g+');-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;'+(hu?'text-decoration:underline;':'')+'">'+ch+'</span>'; }
                 }
                 h+='<div class="pch">'+ch2; if(hd) h+='<div class="pdot" style="background:'+dc+';"></div>'; h+='</div>';
             });
-            arcs.forEach(a=>{ const lp=(a.start+0.5)/n*100; const wp=(a.end-a.start)/n*100; h+='<div class="parc" style="left:'+lp+'%;width:'+wp+'%;border:3px solid '+a.color+';"></div>'; });
+            arcs.forEach(function(a){ var lp=(a.start+0.5)/n*100; var wp=(a.end-a.start)/n*100; h+='<div class="parc" style="left:'+lp+'%;width:'+wp+'%;border:3px solid '+a.color+';"></div>'; });
             h+='</div>'; return h;
         },
 
+        // EDITOR CHAR SVG (Y-flip + underline wrapper)
         rcs(idx) {
-            const cs=[...(this.ew||'')]; const ch=cs[idx]; if(!ch)return '';
-            const p=this.ep[idx]||{}; const col=p.color||'#1e293b'; const sc=p.strokeColors||{};
-            const ic=/[\u4e00-\u9fff]/.test(ch);
+            var cs=[...(this.ew||'')]; var ch=cs[idx]; if(!ch)return '';
+            var p=this.ep[idx]||{}; var col=p.color||'#1e293b'; var sc=p.strokeColors||{};
+            var hu=p.hasUnderline||false;
+            var ic=/[\u4e00-\u9fff]/.test(ch);
             if(ic&&this.sdc[ch]) {
-                const d=this.sdc[ch];
-                let svg='<svg viewBox="0 0 1024 1024" style="width:60px;height:60px;"><g transform="matrix(1,0,0,-1,0,1024)">';
-                d.strokes.forEach((sp,si)=>{ const s2=sc[si]||col; svg+='<path d="'+sp+'" fill="'+s2+'" data-char-idx="'+idx+'" data-stroke-idx="'+si+'" style="cursor:pointer;"/>'; });
-                svg+='</g></svg>'; return svg;
+                var ulStyle = hu ? 'border-bottom:3px solid '+col+';padding-bottom:2px;' : '';
+                var d=this.sdc[ch];
+                var svg='<span style="display:inline-block;'+ulStyle+'"><svg viewBox="0 0 1024 1024" style="width:60px;height:60px;"><g transform="matrix(1,0,0,-1,0,1024)">';
+                d.strokes.forEach(function(sp,si){ var s2=sc[si]||col; svg+='<path d="'+sp+'" fill="'+s2+'" data-char-idx="'+idx+'" data-stroke-idx="'+si+'" style="cursor:pointer;"/>'; });
+                svg+='</g></svg></span>'; return svg;
             }
-            const pt=p.partial||'full'; const sec=p.secondaryColor||'#94a3b8';
-            if(pt==='full'||!pt) return '<span style="font-size:2rem;font-weight:bold;color:'+col+';">'+ch+'</span>';
-            let g=pt==='top'?'to bottom,'+col+' 50%,'+sec+' 50%':pt==='bottom'?'to top,'+col+' 50%,'+sec+' 50%':pt==='left'?'to right,'+col+' 50%,'+sec+' 50%':'to left,'+col+' 50%,'+sec+' 50%';
-            return '<span style="font-size:2rem;font-weight:bold;background:linear-gradient('+g+');-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;">'+ch+'</span>';
+            var ulSpan = hu ? 'text-decoration:underline;text-decoration-color:'+col+';text-decoration-thickness:2px;' : '';
+            return '<span style="font-size:2rem;font-weight:bold;color:'+col+';'+ulSpan+'">'+ch+'</span>';
+        },
+
+        // SIMPLIFIED: toggle dot (auto-set dotColor)
+        toggleDot(idx) {
+            this.ep[idx].hasDot = !this.ep[idx].hasDot;
+            if(this.ep[idx].hasDot && !this.ep[idx].dotColor) {
+                this.ep[idx].dotColor = this.ep[idx].color;
+            }
+        },
+
+        // RESET all phonics
+        resetPhonics() {
+            var cs=[...(this.ew||'')];
+            this.ep = cs.map(function(ch,idx){ return {charIndex:idx,color:'#1e293b',hasDot:false,dotColor:'#1e293b',partial:'full',secondaryColor:'#94a3b8',connectRight:false,lineColor:'#6366f1',hasUnderline:false,strokeColors:{}}; });
         },
 
         hsc(e) { if(e.target.tagName==='path'&&e.target.dataset.charIdx!==undefined){ this.tsc(parseInt(e.target.dataset.charIdx),parseInt(e.target.dataset.strokeIdx)); } },
-        tsc(ci,si) { if(!this.ep[ci].strokeColors)this.ep[ci].strokeColors={}; const cur=this.ep[ci].strokeColors[si]||this.ep[ci].color||'#1e293b'; if(cur===this.sbc) delete this.ep[ci].strokeColors[si]; else this.ep[ci].strokeColors[si]=this.sbc; this.ep[ci].strokeColors=JSON.parse(JSON.stringify(this.ep[ci].strokeColors)); },
+        tsc(ci,si) { if(!this.ep[ci].strokeColors)this.ep[ci].strokeColors={}; var cur=this.ep[ci].strokeColors[si]||this.ep[ci].color||'#1e293b'; if(cur===this.sbc) delete this.ep[ci].strokeColors[si]; else this.ep[ci].strokeColors[si]=this.sbc; this.ep[ci].strokeColors=JSON.parse(JSON.stringify(this.ep[ci].strokeColors)); },
 
         openAdd() { this.ew=''; this.etr=''; this.ee=''; this.ep=[]; this.tr=[]; this.er=[]; this.em2='add'; this.showE=true; },
         openE() { this.ew=this.co.word||''; this.etr=this.co.translation||''; this.ee=this.co.example||''; this.tr=[]; this.er=[]; this.em2='edit'; this.sep(); this.showE=true; this.$nextTick(async()=>{ for(const ch of [...this.ew]){ if(/[\u4e00-\u9fff]/.test(ch))await this.lsd(ch); } }); },
-        sep() { const cs=[...(this.ew||'')]; const old=[...this.ep]; this.ep=cs.map((ch,idx)=>old[idx]||{charIndex:idx,color:'#1e293b',hasDot:false,dotColor:'#1e293b',partial:'full',secondaryColor:'#94a3b8',connectRight:false,lineColor:'#6366f1',hasUnderline:false,strokeColors:{}}); },
+        sep() { var cs=[...(this.ew||'')]; var old=[...this.ep]; this.ep=cs.map(function(ch,idx){ return old[idx]||{charIndex:idx,color:'#1e293b',hasDot:false,dotColor:'#1e293b',partial:'full',secondaryColor:'#94a3b8',connectRight:false,lineColor:'#6366f1',hasUnderline:false,strokeColors:{}}; }); },
         se2() { if(this.em2==='add'){ if(!this.decks[this.cdn])this.decks[this.cdn]=[]; this.decks[this.cdn].push({word:this.ew,translation:this.etr,image:'',example:this.ee,status:'需複習',phonics:JSON.parse(JSON.stringify(this.ep))}); } else { this.co.word=this.ew; this.co.translation=this.etr; this.co.example=this.ee; this.co.phonics=JSON.parse(JSON.stringify(this.ep)); } this.sls(); this.fl(); this.showE=false; },
 
-        async at() { this.it2=true; const w=this.ew; if(!w){ this.it2=false; return; } const iz=/[\u4e00-\u9fff]/.test(w); const sl=iz?'zh-TW':'en', tl=iz?'en':'zh-TW'; const nr=new Set();
-            try{ const r=await fetch('https://api.mymemory.translated.net/get?q='+encodeURIComponent(w)+'&langpair='+sl+'|'+tl); const d=await r.json(); if(d.responseData&&d.responseData.translatedText)nr.add(d.responseData.translatedText); if(d.matches)d.matches.forEach(m=>{if(m.translation)nr.add(m.translation);}); }catch(e){}
-            try{ const r=await fetch('https://translate.googleapis.com/translate_a/single?client=gtx&sl='+sl+'&tl='+tl+'&dt=t&q='+encodeURIComponent(w)); const d=await r.json(); if(d[0])d[0].forEach(it=>{if(it[0])nr.add(it[0]);}); }catch(e){}
-            try{ const r=await fetch('https://lingva.ml/api/v1/'+sl+'/'+tl+'/'+encodeURIComponent(w)); const d=await r.json(); if(d.translation)nr.add(d.translation); }catch(e){}
-            const ex=new Set(this.tr); nr.forEach(r=>{ if(!ex.has(r)&&r.toLowerCase()!==w.toLowerCase())ex.add(r); }); this.tr=[...ex].slice(0,12); if(this.tr.length===0)this.tr.push('(無法取得)'); this.it2=false; },
-        str(i) { const t=this.tr[i]; if(t&&!t.startsWith('(')){ if(this.afm==='add'&&this.etr)this.etr=this.etr+' / '+t; else this.etr=t; } },
+        async at() { this.it2=true; var w=this.ew; if(!w){ this.it2=false; return; } var iz=/[\u4e00-\u9fff]/.test(w); var sl=iz?'zh-TW':'en', tl=iz?'en':'zh-TW'; var nr=new Set();
+            try{ var r=await fetch('https://api.mymemory.translated.net/get?q='+encodeURIComponent(w)+'&langpair='+sl+'|'+tl); var d=await r.json(); if(d.responseData&&d.responseData.translatedText)nr.add(d.responseData.translatedText); if(d.matches)d.matches.forEach(function(m){if(m.translation)nr.add(m.translation);}); }catch(e){}
+            try{ var r=await fetch('https://translate.googleapis.com/translate_a/single?client=gtx&sl='+sl+'&tl='+tl+'&dt=t&q='+encodeURIComponent(w)); var d=await r.json(); if(d[0])d[0].forEach(function(it){if(it[0])nr.add(it[0]);}); }catch(e){}
+            try{ var r=await fetch('https://lingva.ml/api/v1/'+sl+'/'+tl+'/'+encodeURIComponent(w)); var d=await r.json(); if(d.translation)nr.add(d.translation); }catch(e){}
+            var ex=new Set(this.tr); nr.forEach(function(r){ if(!ex.has(r)&&r.toLowerCase()!==w.toLowerCase())ex.add(r); }); this.tr=[].concat(Array.from(ex)).slice(0,12); if(this.tr.length===0)this.tr.push('(無法取得)'); this.it2=false; },
+        str(i) { var t=this.tr[i]; if(t&&!t.startsWith('(')){ if(this.afm==='add'&&this.etr)this.etr=this.etr+' / '+t; else this.etr=t; } },
 
-        async ase() { this.ise2=true; const w=this.ew; if(!w){ this.ise2=false; return; } const iz=/[\u4e00-\u9fff]/.test(w); const nr=[];
+        async ase() { this.ise2=true; var w=this.ew; if(!w){ this.ise2=false; return; } var iz=/[\u4e00-\u9fff]/.test(w); var nr=[];
             if(!iz) {
-                try{ const r=await fetch('https://api.dictionaryapi.dev/api/v2/entries/en/'+encodeURIComponent(w)); const d=await r.json(); if(Array.isArray(d))d.forEach(e=>{if(e.meanings)e.meanings.forEach(m=>{if(m.definitions)m.definitions.forEach(df=>{if(df.example)nr.push('🌐 '+df.example);});});}); }catch(e){}
-                try{ const u='https://tatoeba.org/eng/api_v0/search?query='+encodeURIComponent(w)+'&from=eng&to=und'; const r=await fetch('https://api.allorigins.win/raw?url='+encodeURIComponent(u)); const d=await r.json(); if(d.results)d.results.forEach(r=>{if(r.text&&r.text.length<100)nr.push('🌐 '+r.text);}); }catch(e){}
-                try{ const u='https://api.wordnik.com/v4/word.json/'+encodeURIComponent(w)+'/examples?limit=3'; const r=await fetch('https://api.allorigins.win/raw?url='+encodeURIComponent(u)); const d=await r.json(); if(d.examples)d.examples.forEach(ex=>{if(ex.text&&ex.text.length<100)nr.push('📚 '+ex.text);}); }catch(e){}
-                const lc=w.toLowerCase(); const art='aeiou'.includes(lc[0])?'an':'a';
-                ['📝 I see '+art+' '+w+'.','📝 The '+w+' is big.','📝 Do you like '+w+'?','📝 Look at the '+w+'!','📝 Where is the '+w+'?','📝 I have '+art+' '+w+'.','📝 The '+w+' is here.','📝 This '+w+' is for you.'].forEach(s=>nr.push(s));
+                try{ var r=await fetch('https://api.dictionaryapi.dev/api/v2/entries/en/'+encodeURIComponent(w)); var d=await r.json(); if(Array.isArray(d))d.forEach(function(e){if(e.meanings)e.meanings.forEach(function(m){if(m.definitions)m.definitions.forEach(function(df){if(df.example)nr.push('🌐 '+df.example);});});}); }catch(e){}
+                try{ var u='https://tatoeba.org/eng/api_v0/search?query='+encodeURIComponent(w)+'&from=eng&to=und'; var r=await fetch('https://api.allorigins.win/raw?url='+encodeURIComponent(u)); var d=await r.json(); if(d.results)d.results.forEach(function(r){if(r.text&&r.text.length<100)nr.push('🌐 '+r.text);}); }catch(e){}
+                try{ var u='https://api.wordnik.com/v4/word.json/'+encodeURIComponent(w)+'/examples?limit=3'; var r=await fetch('https://api.allorigins.win/raw?url='+encodeURIComponent(u)); var d=await r.json(); if(d.examples)d.examples.forEach(function(ex){if(ex.text&&ex.text.length<100)nr.push('📚 '+ex.text);}); }catch(e){}
+                var lc=w.toLowerCase(); var art='aeiou'.includes(lc[0])?'an':'a';
+                ['📝 I see '+art+' '+w+'.','📝 The '+w+' is big.','📝 Do you like '+w+'?','📝 Look at the '+w+'!','📝 Where is the '+w+'?','📝 I have '+art+' '+w+'.','📝 The '+w+' is here.','📝 This '+w+' is for you.'].forEach(function(s){nr.push(s);});
             } else {
-                try{ const u='https://tatoeba.org/eng/api_v0/search?query='+encodeURIComponent(w)+'&from=cmn&to=eng'; const r=await fetch('https://api.allorigins.win/raw?url='+encodeURIComponent(u)); const d=await r.json(); if(d.results)d.results.forEach(r=>{if(r.text&&r.text.length<30)nr.push('🌐 '+r.text);}); }catch(e){}
-                ['📝 這是'+w+'。','📝 我喜歡'+w+'。','📝 '+w+'在哪裡？','📝 看！'+w+'！','📝 我要'+w+'。','📝 '+w+'真好玩！','📝 '+w+'很好吃。','📝 這個'+w+'很大。'].forEach(s=>nr.push(s));
+                try{ var u='https://tatoeba.org/eng/api_v0/search?query='+encodeURIComponent(w)+'&from=cmn&to=eng'; var r=await fetch('https://api.allorigins.win/raw?url='+encodeURIComponent(u)); var d=await r.json(); if(d.results)d.results.forEach(function(r){if(r.text&&r.text.length<30)nr.push('🌐 '+r.text);}); }catch(e){}
+                ['📝 這是'+w+'。','📝 我喜歡'+w+'。','📝 '+w+'在哪裡？','📝 看！'+w+'！','📝 我要'+w+'。','📝 '+w+'真好玩！','📝 '+w+'很好吃。','📝 這個'+w+'很大。'].forEach(function(s){nr.push(s);});
             }
-            const seen=new Set(); const dd=[]; nr.forEach(r=>{ const k=r.toLowerCase().trim(); if(!seen.has(k)&&k!==''){ seen.add(k); dd.push(r); } }); dd.sort((a,b)=>a.length-b.length);
-            const ex=new Set(this.er); const es2=new Set(this.er.map(r=>r.toLowerCase().trim())); dd.forEach(r=>{ if(!es2.has(r.toLowerCase().trim())){ ex.add(r); es2.add(r.toLowerCase().trim()); } }); this.er=[...ex].slice(0,12); if(this.er.length===0)this.er.push('(無法取得)'); this.ise2=false; },
-        ser(i) { const e=this.er[i]; if(e&&!e.startsWith('(')){ const c=e.replace(/^[🌐📝📚] /,''); if(this.afm==='add'&&this.ee)this.ee=this.ee+' '+c; else this.ee=c; } },
+            var seen=new Set(); var dd=[]; nr.forEach(function(r){ var k=r.toLowerCase().trim(); if(!seen.has(k)&&k!==''){ seen.add(k); dd.push(r); } }); dd.sort(function(a,b){return a.length-b.length;});
+            var ex=new Set(this.er); var es2=new Set(this.er.map(function(r){return r.toLowerCase().trim();})); dd.forEach(function(r){ if(!es2.has(r.toLowerCase().trim())){ ex.add(r); es2.add(r.toLowerCase().trim()); } }); this.er=[].concat(Array.from(ex)).slice(0,12); if(this.er.length===0)this.er.push('(無法取得)'); this.ise2=false; },
+        ser(i) { var e=this.er[i]; if(e&&!e.startsWith('(')){ var c=e.replace(/^[🌐📝📚] /,''); if(this.afm==='add'&&this.ee)this.ee=this.ee+' '+c; else this.ee=c; } },
 
-        async ata() { await Promise.all([this.at(),this.ase()]); const fT=this.tr.find(r=>!r.startsWith('(')); const fE=this.er.find(r=>!r.startsWith('(')); if(fT){ if(this.afm==='add'&&this.etr)this.etr=this.etr+' / '+fT; else this.etr=fT; } if(fE){ const c=fE.replace(/^[🌐📝📚] /,''); if(this.afm==='add'&&this.ee)this.ee=this.ee+' '+c; else this.ee=c; } },
+        async ata() { await Promise.all([this.at(),this.ase()]); var fT=this.tr.find(function(r){return !r.startsWith('(');}); var fE=this.er.find(function(r){return !r.startsWith('(');}); if(fT){ if(this.afm==='add'&&this.etr)this.etr=this.etr+' / '+fT; else this.etr=fT; } if(fE){ var c=fE.replace(/^[🌐📝📚] /,''); if(this.afm==='add'&&this.ee)this.ee=this.ee+' '+c; else this.ee=c; } },
 
         stw() { this.cm='whack'; this.ws=0; this.wr=0; this.wgo=false; this.nwr(); },
-        nwr() { if(this.wr>=this.wm){ this.wgo=true; return; } this.wr++; const d=this.decks[this.cdn]||[]; if(d.length<3){ this.wgo=true; return; } const sh=[...d].sort(()=>Math.random()-0.5); this.wc=sh.slice(0,3).map((it,idx)=>({...it,cardId:idx,shaking:false})); this.wt=this.wc[Math.floor(Math.random()*3)]; setTimeout(()=>this.spk(this.wt.word),500); },
-        wck(c) { if(this.wgo)return; if(c.word===this.wt.word){ this.ws++; this.pcl(); setTimeout(()=>this.nwr(),1500); } else { c.shaking=true; setTimeout(()=>c.shaking=false,500); } },
-        pcl() { const c=document.getElementById('cc'); if(!c)return; c.innerHTML=''; const em=['⭐','✨','🌟','💫','🎉','🎊','🎆','🎇','🌈','🏆']; for(let i=0;i<20;i++){ const el=document.createElement('div'); el.textContent=em[Math.floor(Math.random()*em.length)]; el.style.cssText='position:absolute;font-size:'+(24+Math.random()*30)+'px;left:'+(10+Math.random()*80)+'%;top:'+(10+Math.random()*80)+'%;animation:sb 1.5s ease-out forwards;animation-delay:'+(Math.random()*0.3)+'s;'; c.appendChild(el); } this.pcs(); setTimeout(()=>{c.innerHTML='';},2000); },
-        pcs() { try{ const ctx=new (window.AudioContext||window.webkitAudioContext)(); [523.25,659.25,783.99,1046.50].forEach((f,i)=>{ const o=ctx.createOscillator(); const g=ctx.createGain(); o.connect(g); g.connect(ctx.destination); o.frequency.value=f; o.type='sine'; const t=ctx.currentTime+i*0.08; g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(0.15,t+0.01); g.gain.exponentialRampToValueAtTime(0.001,t+0.3); o.start(t); o.stop(t+0.3); }); }catch(e){} },
+        nwr() { if(this.wr>=this.wm){ this.wgo=true; return; } this.wr++; var d=this.decks[this.cdn]||[]; if(d.length<3){ this.wgo=true; return; } var sh=[].concat(d).sort(function(){return Math.random()-0.5;}); this.wc=sh.slice(0,3).map(function(it,idx){return Object.assign({},it,{cardId:idx,shaking:false});}); this.wt=this.wc[Math.floor(Math.random()*3)]; setTimeout(()=>this.spk(this.wt.word),500); },
+        wck(c) { if(this.wgo)return; if(c.word===this.wt.word){ this.ws++; this.pcl(); setTimeout(()=>this.nwr(),1500); } else { c.shaking=true; setTimeout(()=>{c.shaking=false;},500); } },
+        pcl() { var c=document.getElementById('cc'); if(!c)return; c.innerHTML=''; var em=['⭐','✨','🌟','💫','🎉','🎊','🎆','🎇','🌈','🏆']; for(var i=0;i<20;i++){ var el=document.createElement('div'); el.textContent=em[Math.floor(Math.random()*em.length)]; el.style.cssText='position:absolute;font-size:'+(24+Math.random()*30)+'px;left:'+(10+Math.random()*80)+'%;top:'+(10+Math.random()*80)+'%;animation:sb 1.5s ease-out forwards;animation-delay:'+(Math.random()*0.3)+'s;'; c.appendChild(el); } this.pcs(); setTimeout(function(){c.innerHTML='';},2000); },
+        pcs() { try{ var ctx=new (window.AudioContext||window.webkitAudioContext)(); [523.25,659.25,783.99,1046.50].forEach(function(f,i){ var o=ctx.createOscillator(); var g=ctx.createGain(); o.connect(g); g.connect(ctx.destination); o.frequency.value=f; o.type='sine'; var t=ctx.currentTime+i*0.08; g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(0.15,t+0.01); g.gain.exponentialRampToValueAtTime(0.001,t+0.3); o.start(t); o.stop(t+0.3); }); }catch(e){} },
 
         stm() { this.cm='magic'; this.ms2=0; this.ma=0; this.nmr(); },
-        nmr() { this.mdo=false; this.mres=null; this.mr=null; const d=this.decks[this.cdn]||[]; if(d.length===0)return; this.mw=d[Math.floor(Math.random()*d.length)]; },
-        ssr() { const SR=window.SpeechRecognition||window.webkitSpeechRecognition; if(!SR){ alert('請用Chrome'); return; } const r=new SR(); r.lang='zh-TW'; r.continuous=false; r.interimResults=false; this.ml=true; r.onresult=(ev)=>{ const t=ev.results[0][0].transcript.trim(); this.ml=false; this.ma++; const tg=this.mw?this.mw.word:''; if(t.includes(tg)||tg.includes(t)||t.replace(/[\s,。！？]/g,'')===tg.replace(/[\s,。！？]/g,'')){ this.mres='correct'; this.mdo=true; this.ms2++; const rw=['🐰','🐱','🐶','🦊','🐼','🦁','🐯','🦄','🎁','👑','⭐','🌈','🧸','🍭','🎈']; this.mr=rw[Math.floor(Math.random()*rw.length)]; this.pcs(); setTimeout(()=>this.nmr(),3000); } else { this.mres='wrong'; setTimeout(()=>{this.mres=null;},2000); } }; r.onerror=()=>{ this.ml=false; this.mres='wrong'; setTimeout(()=>{this.mres=null;},2000); }; r.onend=()=>{ this.ml=false; }; r.start(); },
+        nmr() { this.mdo=false; this.mres=null; this.mr=null; var d=this.decks[this.cdn]||[]; if(d.length===0)return; this.mw=d[Math.floor(Math.random()*d.length)]; },
+        ssr() { var SR=window.SpeechRecognition||window.webkitSpeechRecognition; if(!SR){ alert('請用Chrome'); return; } var r=new SR(); r.lang='zh-TW'; r.continuous=false; r.interimResults=false; this.ml=true; r.onresult=function(ev){ var t=ev.results[0][0].transcript.trim(); this.ml=false; this.ma++; var tg=this.mw?this.mw.word:''; if(t.includes(tg)||tg.includes(t)||t.replace(/[\s,。！？]/g,'')===tg.replace(/[\s,。！？]/g,'')){ this.mres='correct'; this.mdo=true; this.ms2++; var rw=['🐰','🐱','🐶','🦊','🐼','🦁','🐯','🦄','🎁','👑','⭐','🌈','🧸','🍭','🎈']; this.mr=rw[Math.floor(Math.random()*rw.length)]; this.pcs(); setTimeout(()=>this.nmr(),3000); } else { this.mres='wrong'; setTimeout(()=>{this.mres=null;},2000); } }.bind(this); r.onerror=function(){ this.ml=false; this.mres='wrong'; setTimeout(()=>{this.mres=null;},2000); }.bind(this); r.onend=function(){ this.ml=false; }.bind(this); r.start(); },
 
         openD() { this.showD=true; this.$nextTick(()=>this.ic2()); },
         ic2() { this.cv=this.$refs.dc; if(!this.cv)return; this.cx=this.cv.getContext('2d'); this.cx.fillStyle='#ffffff'; this.cx.fillRect(0,0,this.cv.width,this.cv.height); this.lic(); },
-        lic() { if(this.co.image&&this.co.image.startsWith('data:image')){ const im=new Image(); im.onload=()=>{ this.cx.clearRect(0,0,this.cv.width,this.cv.height); this.cx.fillStyle='#fff'; this.cx.fillRect(0,0,this.cv.width,this.cv.height); const r=Math.min(this.cv.width/im.width,this.cv.height/im.height); const w=im.width*r,h=im.height*r; this.cx.drawImage(im,(this.cv.width-w)/2,(this.cv.height-h)/2,w,h); }; im.src=this.co.image; } },
+        lic() { if(this.co.image&&this.co.image.startsWith('data:image')){ var im=new Image(); im.onload=()=>{ this.cx.clearRect(0,0,this.cv.width,this.cv.height); this.cx.fillStyle='#fff'; this.cx.fillRect(0,0,this.cv.width,this.cv.height); var r=Math.min(this.cv.width/im.width,this.cv.height/im.height); var w=im.width*r,h=im.height*r; this.cx.drawImage(im,(this.cv.width-w)/2,(this.cv.height-h)/2,w,h); }; im.src=this.co.image; } },
         cc() { if(this.cx){ this.cx.fillStyle='#fff'; this.cx.fillRect(0,0,this.cv.width,this.cv.height); } },
         sc2() { if(this.cv){ this.co.image=this.cv.toDataURL('image/png'); this.sls(); } this.showD=false; },
-        tu(cam) { const inp=document.createElement('input'); inp.type='file'; inp.accept='image/*'; if(cam)inp.capture='environment'; inp.onchange=(e)=>{ const f=e.target.files[0]; if(f){ const r=new FileReader(); r.onload=(ev)=>{ const im=new Image(); im.onload=()=>{ this.cx.clearRect(0,0,this.cv.width,this.cv.height); this.cx.fillStyle='#fff'; this.cx.fillRect(0,0,this.cv.width,this.cv.height); const rr=Math.min(this.cv.width/im.width,this.cv.height/im.height); const w=im.width*rr,h=im.height*rr; this.cx.drawImage(im,(this.cv.width-w)/2,(this.cv.height-h)/2,w,h); }; im.src=ev.target.result; }; r.readAsDataURL(f); } }; inp.click(); },
-        async fwi() { this.isi=true; this.sr=[]; const w=this.co.word; for(let i=0;i<6;i++)this.sr.push('https://loremflickr.com/200/200/'+encodeURIComponent(w)+'?lock='+i); this.isi=false; },
-        swi(u) { const im=new Image(); im.crossOrigin='anonymous'; im.onload=()=>{ if(this.cx){ this.cx.clearRect(0,0,this.cv.width,this.cv.height); this.cx.fillStyle='#fff'; this.cx.fillRect(0,0,this.cv.width,this.cv.height); const r=Math.min(this.cv.width/im.width,this.cv.height/im.height); const w=im.width*r,h=im.height*r; this.cx.drawImage(im,(this.cv.width-w)/2,(this.cv.height-h)/2,w,h); } }; im.src=u; },
-        sd2(e) { if(this.ct==='emoji'){ const r=this.cv.getBoundingClientRect(); const cx=(e.clientX||(e.touches&&e.touches[0].clientX))-r.left; const cy=(e.clientY||(e.touches&&e.touches[0].clientY))-r.top; this.cx.font='24px sans-serif'; this.cx.textAlign='center'; this.cx.fillText(this.se,cx,cy); } else { this.id2=true; const r=this.cv.getBoundingClientRect(); const cx=(e.clientX||(e.touches&&e.touches[0].clientX))-r.left; const cy=(e.clientY||(e.touches&&e.touches[0].clientY))-r.top; this.cx.beginPath(); this.cx.moveTo(cx,cy); this.cx.strokeStyle=this.bc; this.cx.lineWidth=3; } },
-        drw(e) { if(!this.id2||this.ct!=='draw')return; e.preventDefault(); const r=this.cv.getBoundingClientRect(); const cx=(e.clientX||(e.touches&&e.touches[0].clientX))-r.left; const cy=(e.clientY||(e.touches&&e.touches[0].clientY))-r.top; this.cx.lineTo(cx,cy); this.cx.stroke(); },
+        tu(cam) { var inp=document.createElement('input'); inp.type='file'; inp.accept='image/*'; if(cam)inp.capture='environment'; inp.onchange=function(e){ var f=e.target.files[0]; if(f){ var r=new FileReader(); r.onload=function(ev){ var im=new Image(); im.onload=function(){ this.cx.clearRect(0,0,this.cv.width,this.cv.height); this.cx.fillStyle='#fff'; this.cx.fillRect(0,0,this.cv.width,this.cv.height); var rr=Math.min(this.cv.width/im.width,this.cv.height/im.height); var w=im.width*rr,h=im.height*rr; this.cx.drawImage(im,(this.cv.width-w)/2,(this.cv.height-h)/2,w,h); }.bind(this); im.src=ev.target.result; }.bind(this); r.readAsDataURL(f); } }.bind(this); inp.click(); },
+        async fwi() { this.isi=true; this.sr=[]; var w=this.co.word; for(var i=0;i<6;i++)this.sr.push('https://loremflickr.com/200/200/'+encodeURIComponent(w)+'?lock='+i); this.isi=false; },
+        swi(u) { var im=new Image(); im.crossOrigin='anonymous'; im.onload=()=>{ if(this.cx){ this.cx.clearRect(0,0,this.cv.width,this.cv.height); this.cx.fillStyle='#fff'; this.cx.fillRect(0,0,this.cv.width,this.cv.height); var r=Math.min(this.cv.width/im.width,this.cv.height/im.height); var w=im.width*r,h=im.height*r; this.cx.drawImage(im,(this.cv.width-w)/2,(this.cv.height-h)/2,w,h); } }; im.src=u; },
+        sd2(e) { if(this.ct==='emoji'){ var r=this.cv.getBoundingClientRect(); var cx=(e.clientX||(e.touches&&e.touches[0].clientX))-r.left; var cy=(e.clientY||(e.touches&&e.touches[0].clientY))-r.top; this.cx.font='24px sans-serif'; this.cx.textAlign='center'; this.cx.fillText(this.se,cx,cy); } else { this.id2=true; var r=this.cv.getBoundingClientRect(); var cx=(e.clientX||(e.touches&&e.touches[0].clientX))-r.left; var cy=(e.clientY||(e.touches&&e.touches[0].clientY))-r.top; this.cx.beginPath(); this.cx.moveTo(cx,cy); this.cx.strokeStyle=this.bc; this.cx.lineWidth=3; } },
+        drw(e) { if(!this.id2||this.ct!=='draw')return; e.preventDefault(); var r=this.cv.getBoundingClientRect(); var cx=(e.clientX||(e.touches&&e.touches[0].clientX))-r.left; var cy=(e.clientY||(e.touches&&e.touches[0].clientY))-r.top; this.cx.lineTo(cx,cy); this.cx.stroke(); },
         ed2() { this.id2=false; },
 
         async expXlsx() {
-            const wb=new ExcelJS.Workbook(); const ws=wb.addWorksheet('F');
+            var wb=new ExcelJS.Workbook(); var ws=wb.addWorksheet('F');
             ws.columns=[{header:'卡組名稱',key:'deck',width:20},{header:'詞彙',key:'word',width:20},{header:'翻譯',key:'translation',width:15},{header:'真實圖片',key:'image',width:20},{header:'例句',key:'example',width:40},{header:'狀態',key:'status',width:15},{header:'隱藏圖片資料',key:'imgData',width:30},{header:'隱藏Phonics資料',key:'phonicsData',width:30}];
             ws.getColumn(7).hidden=true; ws.getColumn(8).hidden=true;
-            for(const [dn,items] of Object.entries(this.decks)) {
-                for(const item of items) {
-                    const w=item.word||''; const ph=item.phonics||[]; const pm={};
-                    ph.forEach(p=>{ if(p.charIndex!==undefined)pm[p.charIndex]=p; });
-                    const rd={deck:dn,word:w,translation:item.translation||'',image:'',example:item.example||'',status:item.status||'',imgData:'',phonicsData:JSON.stringify(ph)};
-                    const c=ws.addRow(rd);
+            for(var dn in this.decks) {
+                var items=this.decks[dn];
+                for(var ii=0;ii<items.length;ii++) {
+                    var item=items[ii]; var w=item.word||''; var ph=item.phonics||[]; var pm={};
+                    ph.forEach(function(p){ if(p.charIndex!==undefined)pm[p.charIndex]=p; });
+                    var rd={deck:dn,word:w,translation:item.translation||'',image:'',example:item.example||'',status:item.status||'',imgData:'',phonicsData:JSON.stringify(ph)};
+                    var c=ws.addRow(rd);
                     if(ph.length>0) {
-                        const wc2=ws.getCell(c.number,2);
-                        const rt={richText:[]};
-                        for(let ci=0;ci<[...w].length;ci++) {
-                            const p=pm[ci]||{}; const col=(p.color||'#1e293b').replace('#','');
-                            const hu=p.hasUnderline||false;
-                            rt.richText.push({text:[...w][ci],font:{color:{argb:'FF'+col},underline:hu}});
-                            if(p.hasDot){ const dc2=(p.dotColor||p.color||'#1e293b').replace('#',''); rt.richText.push({text:'\u2022',font:{color:{argb:'FF'+dc2},size:10}}); }
+                        var wc2=ws.getCell(c.number,2);
+                        var rt={richText:[]};
+                        for(var ci=0;ci<[].concat([],w.split('')).length;ci++) {
+                            var p=pm[ci]||{}; var col=(p.color||'#1e293b').replace('#','');
+                            var hu=p.hasUnderline||false;
+                            rt.richText.push({text:[].concat([],w.split(''))[ci],font:{color:{argb:'FF'+col},underline:hu}});
+                            if(p.hasDot){ var dc2=(p.dotColor||p.color||'#1e293b').replace('#',''); rt.richText.push({text:'\u2022',font:{color:{argb:'FF'+dc2},size:10}}); }
                         }
                         wc2.value=rt;
                     }
                     c.height=100;
                     if(item.image&&item.image.startsWith('data:image')) {
                         rd.imgData=item.image;
-                        const b64=item.image.split(',')[1]; const bin=atob(b64); const bytes=new Uint8Array(bin.length);
-                        for(let j=0;j<bin.length;j++)bytes[j]=bin.charCodeAt(j);
-                        const imgId=wb.addImage({buffer:bytes.buffer,extension:'png'});
+                        var b64=item.image.split(',')[1]; var bin=atob(b64); var bytes=new Uint8Array(bin.length);
+                        for(var j=0;j<bin.length;j++)bytes[j]=bin.charCodeAt(j);
+                        var imgId=wb.addImage({buffer:bytes.buffer,extension:'png'});
                         ws.addImage(imgId,{tl:{col:3,row:c.number-1},ext:{width:120,height:120}});
                     } else { rd.image=item.image||''; }
                 }
             }
-            const buf=await wb.xlsx.writeBuffer();
+            var buf=await wb.xlsx.writeBuffer();
             saveAs(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),'flashcard_data.xlsx');
         },
 
