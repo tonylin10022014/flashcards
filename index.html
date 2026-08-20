@@ -213,7 +213,6 @@ function fa() {
         ig() { const d=this.decks[this.cdn]||[]; const sz=Math.min(parseInt(this.gs)||9,d.length); this.gi=[...d].sort(()=>Math.random()-0.5).slice(0,sz); },
         spk(w) { if(!w)return; if('speechSynthesis'in window){ speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(w); u.lang=/[\u4e00-\u9fff]/.test(w)?'zh-TW':'en-US'; u.rate=0.8; speechSynthesis.speak(u); } },
 
-        // RENDER PHONICS (SVG Y-flip fixed)
         rp(obj) {
             const w=(obj&&obj.word)||''; if(!obj||!obj.phonics||obj.phonics.length===0) return w;
             const cs=[...w]; const n=cs.length; if(n===0)return '';
@@ -242,7 +241,6 @@ function fa() {
             h+='</div>'; return h;
         },
 
-        // EDITOR CHAR SVG (Y-flip fixed)
         rcs(idx) {
             const cs=[...(this.ew||'')]; const ch=cs[idx]; if(!ch)return '';
             const p=this.ep[idx]||{}; const col=p.color||'#1e293b'; const sc=p.strokeColors||{};
